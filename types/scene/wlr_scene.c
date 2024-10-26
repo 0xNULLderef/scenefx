@@ -700,6 +700,7 @@ struct wlr_scene_buffer *wlr_scene_buffer_create(struct wlr_scene_tree *parent,
 	pixman_region32_init(&scene_buffer->opaque_region);
 	scene_buffer->opacity = 1;
 	scene_buffer->corner_radius = 0;
+	scene_buffer->corners = CORNER_LOCATION_NONE;
 
 	scene_node_update(&scene_buffer->node, NULL);
 
@@ -921,12 +922,14 @@ void wlr_scene_buffer_set_filter_mode(struct wlr_scene_buffer *scene_buffer,
 }
 
 void wlr_scene_buffer_set_corner_radius(struct wlr_scene_buffer *scene_buffer,
-		int radii) {
-	if (scene_buffer->corner_radius == radii) {
+		int radii, enum corner_location corners) {
+	if (scene_buffer->corner_radius == radii
+			&& scene_buffer->corners == corners) {
 		return;
 	}
 
 	scene_buffer->corner_radius = radii;
+	scene_buffer->corners = corners;
 	scene_node_update(&scene_buffer->node, NULL);
 }
 
@@ -1399,6 +1402,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 					WLR_RENDER_BLEND_MODE_PREMULTIPLIED : WLR_RENDER_BLEND_MODE_NONE,
 			},
 			.clip_box = &dst_box,
+			.corners = scene_buffer->corners,
 			.corner_radius = scene_buffer->corner_radius * data->scale,
 		};
 
