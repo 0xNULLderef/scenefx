@@ -22,6 +22,7 @@ big_endian = target_machine.endian() == 'big'
 add_project_arguments([
 	'-D_POSIX_C_SOURCE=200809L',
 	'-DWLR_USE_UNSTABLE',
+	'-DWLR_PRIVATE=',
 	'-DWLR_LITTLE_ENDIAN=@0@'.format(little_endian.to_int()),
 	'-DWLR_BIG_ENDIAN=@0@'.format(big_endian.to_int()),
 ], language: 'c')
@@ -93,15 +94,15 @@ wayland_server = dependency('wayland-server',
 )
 
 wlroots_options = [ 'examples=false' ]
-wlroots_version = ['>=0.18.1', '<0.19.0']
-wlroots = dependency('wlroots-0.18',
+wlroots_version = ['>=0.19.0', '<0.20.0']
+wlroots = dependency('wlroots-0.19',
 	version: wlroots_version,
 	default_options: wlroots_options,
 	required: false,
 )
 if not wlroots.found()
 	wlroots_proj = subproject(
-		'wlroots-0.18',
+		'wlroots-0.19',
 		default_options: wlroots_options,
 		version: wlroots_version,
 	)
