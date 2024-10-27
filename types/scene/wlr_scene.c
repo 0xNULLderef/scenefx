@@ -1380,6 +1380,51 @@ struct wlr_scene_node *wlr_scene_node_at(struct wlr_scene_node *node,
 	return NULL;
 }
 
+// FIXME: i don't think i need this but it fixes crap
+// Some surfaces (mostly GTK 4) decorate their windows with shadows
+// which extends the node size past the actual window size. This gets
+// the actual surface geometry, mostly ignoring CSD decorations
+// but only if we need to.
+static void clip_xdg(struct wlr_scene_node *node,
+		pixman_region32_t *clip, struct wlr_box *dst_box,
+		int x, int y, float scale) {
+	struct wlr_scene_buffer *scene_buffer = NULL;
+	switch (node->type) {
+	default:
+		return;
+	case WLR_SCENE_NODE_BUFFER:
+		scene_buffer = wlr_scene_buffer_from_node(node);
+		break;
+	}
+
+	// Don't clip if the scene buffer doesn't have any effects
+	if (!scene_buffer || (scene_buffer->corner_radius == 0 &&
+				!scene_buffer_has_shadow(&scene_buffer->shadow_data))) {
+		return;
+	}
+
+	struct wlr_scene_surface *scene_surface = wlr_scene_surface_try_from_buffer(scene_buffer);
+	struct wlr_xdg_surface *xdg_surface = NULL;
+	if (scene_surface &&
+			(xdg_surface = wlr_xdg_surface_try_from_wlr_surface(scene_surface->surface))) {
+		struct wlr_box* geometry = &xdg_surface->geometry;
+		scale_box(geometry, scale);
+
+		if (dst_box->width > geometry->width) {
+			dst_box->width = geometry->width;
+			dst_box->x = geometry->x + x;
+		}
+		if (dst_box->height > geometry->height) {
+			dst_box->height = geometry->height;
+			dst_box->y = geometry->y + y;
+		}
+
+		pixman_region32_intersect_rect(clip, clip,
+				dst_box->x, dst_box->y,
+				dst_box->width, dst_box->height);
+	}
+}
+
 struct render_list_entry {
 	struct wlr_scene_node *node;
 	bool sent_dmabuf_feedback;
@@ -1411,14 +1456,23 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 	scene_node_get_size(node, &dst_box.width, &dst_box.height);
 	transform_output_box(&dst_box, data);
 
-	// Shadow box
-	struct wlr_box shadow_box = dst_box;
+	// FIXME: Shadow box should juts be dst_box but it sure as hell isn't
+	// Tries to clip the node to the xdg geometry size, clipping CSD
+	struct wlr_box xdg_box = dst_box;
+	pixman_region32_t geometry_region; // The actual geometry region excluding CSD
+	pixman_region32_init(&geometry_region);
+	pixman_region32_copy(&geometry_region, &render_region);
+	clip_xdg(node, &geometry_region, &xdg_box, dst_box.x, dst_box.y, data->scale);
 
 	pixman_region32_t opaque;
 	pixman_region32_init(&opaque);
 	scene_node_opaque_region(node, x, y, &opaque);
 	logical_to_buffer_coords(&opaque, data);
 	pixman_region32_subtract(&opaque, &render_region, &opaque);
+
+	// TODO: these *may need* an extra damage step
+	transform_output_box(&dst_box, data);
+	transform_output_box(&xdg_box, data);
 
 	switch (node->type) {
 	case WLR_SCENE_NODE_TREE:
@@ -1458,6 +1512,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 		// Shadow
 		if (scene_buffer_has_shadow(&scene_buffer->shadow_data)) {
 			struct shadow_data shadow_data = scene_buffer->shadow_data;
+			struct wlr_box shadow_box = xdg_box;
 			shadow_box.x -= shadow_data.blur_sigma - shadow_data.offset_x;
 			shadow_box.y -= shadow_data.blur_sigma - shadow_data.offset_y;
 			shadow_box.width += shadow_data.blur_sigma * 2;
@@ -1468,7 +1523,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 
 			struct fx_render_box_shadow_options shadow_options = {
 				.shadow_box = shadow_box,
-				.clip_box = dst_box,
+				.clip_box = xdg_box,
 				.clip = &render_region,
 				.shadow_data = &shadow_data,
 				.corner_radius = scene_buffer->corner_radius * data->scale,
@@ -1491,7 +1546,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 				.wait_timeline = scene_buffer->wait_timeline,
 				.wait_point = scene_buffer->wait_point,
 			},
-			.clip_box = &dst_box,
+			.clip_box = &xdg_box,
 			.corner_radius = scene_buffer->corner_radius * data->scale,
 		};
 
