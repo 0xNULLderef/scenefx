@@ -1560,7 +1560,7 @@ static void scene_entry_render(struct render_list_entry *entry, const struct ren
 
 		if (entry->highlight_transparent_region) {
 			wlr_render_pass_add_rect(&data->render_pass->base, &(struct wlr_render_rect_options){
-				.box = dst_box,
+				.box = dst,
 				.color = { .r = 0, .g = 0.3, .b = 0, .a = 0.3 },
 				.clip = &opaque,
 			});

@@ -165,7 +165,7 @@ scenefx = declare_dependency(
 meson.override_dependency(versioned_name, scenefx)
 
 if get_option('examples')
-	# TODO:	subdir('examples')
+	# TODO: subdir('examples')
 	subdir('tinywl')
 endif
 
