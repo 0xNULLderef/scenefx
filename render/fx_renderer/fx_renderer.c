@@ -14,7 +14,6 @@
 #include <wlr/render/allocator.h>
 #include <wlr/render/egl.h>
 #include <wlr/render/interface.h>
-#include <wlr/types/wlr_matrix.h>
 #include <wlr/util/box.h>
 #include <wlr/util/log.h>
 
@@ -24,6 +23,7 @@
 #include "render/fx_renderer/util.h"
 #include "scenefx/render/fx_renderer/fx_renderer.h"
 #include "scenefx/render/pass.h"
+#include "util/matrix.h"
 #include "util/time.h"
 
 static const struct wlr_renderer_impl renderer_impl;

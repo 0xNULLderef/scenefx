@@ -4,7 +4,6 @@
 #include <pixman.h>
 #include <time.h>
 #include <wlr/render/allocator.h>
-#include <wlr/types/wlr_matrix.h>
 #include <wlr/util/transform.h>
 #include <wlr/util/log.h>
 #include <wlr/util/region.h>
@@ -17,6 +16,7 @@
 #include "scenefx/render/fx_renderer/fx_effect_framebuffers.h"
 #include "scenefx/types/fx/blur_data.h"
 #include "scenefx/types/fx/shadow_data.h"
+#include "util/matrix.h"
 
 #define MAX_QUADS 86 // 4kb
 
@@ -207,29 +207,29 @@ static void render(const struct wlr_box *box, const pixman_region32_t *clip, GLi
 
 static void set_proj_matrix(GLint loc, float proj[9], const struct wlr_box *box) {
 	float gl_matrix[9];
-	wlr_matrix_identity(gl_matrix);
-	wlr_matrix_translate(gl_matrix, box->x, box->y);
-	wlr_matrix_scale(gl_matrix, box->width, box->height);
-	wlr_matrix_multiply(gl_matrix, proj, gl_matrix);
+	scenefx_matrix_identity(gl_matrix);
+	scenefx_matrix_translate(gl_matrix, box->x, box->y);
+	scenefx_matrix_scale(gl_matrix, box->width, box->height);
+	scenefx_matrix_multiply(gl_matrix, proj, gl_matrix);
 	glUniformMatrix3fv(loc, 1, GL_FALSE, gl_matrix);
 }
 
 static void set_tex_matrix(GLint loc, enum wl_output_transform trans,
 		const struct wlr_fbox *box) {
 	float tex_matrix[9];
-	wlr_matrix_identity(tex_matrix);
-	wlr_matrix_translate(tex_matrix, box->x, box->y);
-	wlr_matrix_scale(tex_matrix, box->width, box->height);
-	wlr_matrix_translate(tex_matrix, .5, .5);
+	scenefx_matrix_identity(tex_matrix);
+	scenefx_matrix_translate(tex_matrix, box->x, box->y);
+	scenefx_matrix_scale(tex_matrix, box->width, box->height);
+	scenefx_matrix_translate(tex_matrix, .5, .5);
 
 	// since textures have a different origin point we have to transform
 	// differently if we are rotating
 	if (trans & WL_OUTPUT_TRANSFORM_90) {
-		wlr_matrix_transform(tex_matrix, wlr_output_transform_invert(trans));
+		scenefx_matrix_transform(tex_matrix, wlr_output_transform_invert(trans));
 	} else {
-		wlr_matrix_transform(tex_matrix, trans);
+		scenefx_matrix_transform(tex_matrix, trans);
 	}
-	wlr_matrix_translate(tex_matrix, -.5, -.5);
+	scenefx_matrix_translate(tex_matrix, -.5, -.5);
 
 	glUniformMatrix3fv(loc, 1, GL_FALSE, tex_matrix);
 }

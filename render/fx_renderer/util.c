@@ -7,11 +7,7 @@
 #include "render/fx_renderer/util.h"
 
 static uint32_t backend_get_buffer_caps(struct wlr_backend *backend) {
-	if (!backend->impl->get_buffer_caps) {
-		return 0;
-	}
-
-	return backend->impl->get_buffer_caps(backend);
+	return backend->buffer_caps;
 }
 
 static int open_drm_render_node(void) {
